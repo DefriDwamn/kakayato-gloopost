@@ -9,8 +9,16 @@ export class BookService {
 	}
 
 	async getRandomBook(): Promise<Book> {
-		const book = await this.supabase.functions.invoke('recommend');
-		return book.data as Book;
+		const { data: { session }, error } = await this.supabase.auth.getSession();
+		if (error) throw error;
+		if (!session?.access_token) throw new Error('Not authenticated');
+
+		const res = await this.supabase.functions.invoke('recommend', {
+			headers: { Authorization: `Bearer ${session.access_token}` }
+		});
+
+		if (res.error) throw res.error;
+		return res.data as Book;
 	}
 
 	async getViewed(): Promise<ViewedBook[]> {
