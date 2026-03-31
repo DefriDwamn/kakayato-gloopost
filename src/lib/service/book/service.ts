@@ -27,14 +27,21 @@ export class BookService {
 	}
 
 	private async insert(row: { book_id: number; will_read: boolean }) {
-		const { data, error } = await this.supabase.auth.getUser();
+		const { data: sessionData, error: sessionError } = await this.supabase.auth.getSession();
 
-		if (error !== null) {
-			console.log(error);
-			return;
+		if (sessionError) {
+			throw new Error(`Auth session fetch failed: ${sessionError.message}`);
 		}
 
-		await this.supabase.from('books').insert({ ...row, user_id: data.user.id });
+		const user = sessionData?.session?.user;
+		if (!user) {
+			throw new Error('User is not authenticated');
+		}
+
+		const { error: insertError } = await this.supabase.from('books').insert({ ...row, user_id: user.id });
+		if (insertError) {
+			throw insertError;
+		}
 	}
 
 	likeBook(id: Book['id']) {

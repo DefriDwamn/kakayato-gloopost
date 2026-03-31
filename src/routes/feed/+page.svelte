@@ -34,8 +34,16 @@
 				<button
 					class="transition w-15 h-15 text-2xl rounded-full border-2 hover:bg-red-50 active:bg-red-100 border-red-300"
 					onclick={async () => {
-						await books.dislikeBook(book.id);
-						selectedBook = books.getRandomBook();
+						try {
+							await books.dislikeBook(book.id);
+							selectedBook = books.getRandomBook();
+						} catch (error) {
+							console.error('Dislike failed:', error);
+							const err = error as Error;
+							if (err?.message?.includes('not authenticated')) {
+								goto('/login');
+							}
+						}
 					}}
 				>
 					👎
@@ -43,8 +51,16 @@
 				<button
 					class="transition w-15 h-15 text-2xl rounded-full border-2 hover:bg-green-50 active:bg-green-100 border-green-300"
 					onclick={async () => {
-						await books.likeBook(book.id);
-						selectedBook = books.getRandomBook();
+						try {
+							await books.likeBook(book.id);
+							selectedBook = books.getRandomBook();
+						} catch (error) {
+							console.error('Like failed:', error);
+							const err = error as Error;
+							if (err?.message?.includes('not authenticated')) {
+								goto('/login');
+							}
+						}
 					}}
 				>
 					👍
