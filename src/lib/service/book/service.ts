@@ -38,10 +38,24 @@ export class BookService {
 			throw new Error('User is not authenticated');
 		}
 
-		const { error: insertError } = await this.supabase.from('books').insert({ ...row, user_id: user.id });
-		if (insertError) {
-			throw insertError;
+		const accessToken = sessionData.session?.access_token;
+		if (!accessToken) {
+			throw new Error('Missing access token');
 		}
+
+		const res = await this.supabase.functions.invoke('book-action', {
+			method: 'POST',
+			headers: {
+				Authorization: `Bearer ${accessToken}`
+			},
+			body: JSON.stringify({ book_id: row.book_id, will_read: row.will_read })
+		});
+
+		if (res.error) {
+			throw res.error;
+		}
+
+		return res.data;
 	}
 
 	likeBook(id: Book['id']) {
