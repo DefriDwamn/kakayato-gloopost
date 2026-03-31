@@ -9,8 +9,9 @@ const jsonHeaders = {
 	'Content-Type': 'application/json'
 };
 
-export const response = (data: unknown, json = true) =>
+export const response = (data: unknown, json = true, status = 200) =>
 	new Response(JSON.stringify(data), {
+		status,
 		headers: { ...(json ? jsonHeaders : {}), ...corsHeaders }
 	});
 
@@ -20,15 +21,29 @@ export function serve(
 	Deno.serve(async (req: Request) => {
 		// I hate CORS
 		if (req.method === 'OPTIONS') {
-			return response('ok', false);
+			return new Response(null, {
+				status: 204,
+				headers: corsHeaders
+			});
 		}
 
-		const supabase = createClient(
-			Deno.env.get('SUPABASE_DATABASE_URL') ?? '',
-			Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-			{ global: { headers: { Authorization: req.headers.get('Authorization')! } } }
-		);
+		const supabaseUrl = Deno.env.get('SUPABASE_URL') || Deno.env.get('SUPABASE_DATABASE_URL');
+		const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY') || Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+		const authHeader = req.headers.get('Authorization');
 
-		return handler(req, supabase);
+		if (!supabaseUrl || !supabaseKey) {
+			return response({ error: 'Supabase config missing' }, true, 500);
+		}
+
+		const supabase = createClient(supabaseUrl, supabaseKey, {
+			global: { headers: authHeader ? { Authorization: authHeader } : {} }
+		});
+
+		try {
+			return await handler(req, supabase);
+		} catch (error) {
+			console.error('Function error', error);
+			return response({ error: (error as Error).message || String(error) }, true, 500);
+		}
 	});
 }
